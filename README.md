@@ -12,7 +12,7 @@ This system is designed to provide immediate awareness of a power grid failure. 
 The ESP32 is powered continuously by the USB power bank. A "sense" wire is connected from the 5V line of the main wall adapter to GPIO pin 13 on the ESP32. A common ground is established between the main power line and the ESP32.
 
 ![A photo of my completed project breadboard](./IMG_4416.PNG)
-![A photo of my completed project breadboard](./IMG_4419.JPG)
+![A photo of my completed project breadboard](./IMG_4419.jpg)
 
 ## Source Code
 
