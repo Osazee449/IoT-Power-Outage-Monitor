@@ -24,23 +24,7 @@ The ESP32 is powered continuously by the USB power bank. A "sense" wire is conne
   If the main power (sensed via a 5V line) is lost, the device connects to Wi-Fi
   and sends a webhook to IFTTT to trigger an email notification. The device
   is powered by a USB power bank to ensure it remains operational during an outage.
-/**
- * @file power_monitor_main.cpp
- * @author Your Name
- * @brief Monitors a main power supply using an ESP32 and sends an IFTTT notification on failure.
- * @version 1.1
- * @date 2025-09-01
- *
- * @copyright Copyright (c) 2025
- *
- * Description:
- * This code runs on an ESP32 to monitor the status of a main power supply.
- * A 5V signal from the main supply is monitored on a GPIO pin. If this signal is
- * lost, the device connects to a predefined Wi-Fi network and sends a webhook to
- * IFTTT, which can trigger an email, push notification, or other alert.
- * The ESP32 itself should be powered by an uninterruptible power source, such as a
- * USB power bank, to ensure it remains operational during a power outage.
- */
+
 
 #include <WiFi.h>
 #include <HTTPClient.h>
