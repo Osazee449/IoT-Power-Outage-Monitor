@@ -16,12 +16,7 @@ The ESP32 is powered continuously by the USB power bank. A "sense" wire is conne
 
 ## Source Code
 
-Below is the complete, commented code for the project.
 
-  /*
-  IoT Power Outage & Grid Reliability Monitor
-  Author: Osazee Imasuen
-  Date: August 20, 2025
 
 
   Description:
