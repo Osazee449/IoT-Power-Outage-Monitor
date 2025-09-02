@@ -26,109 +26,108 @@ The ESP32 is powered continuously by the USB power bank. A "sense" wire is conne
   is powered by a USB power bank to ensure it remains operational during an outage.
 
 
+// Include necessary libraries for WiFi and making HTTP requests
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include "config.h" // Include the separate configuration file
 
-// --- Pin Definitions ---
-const int SENSE_PIN = 13; // GPIO pin to sense the main power status.
+// --- IMPORTANT: CONFIGURE THESE SETTINGS ---
+const char* ssid = "networkname";         // Your Wi-Fi network name
+const char* password = "password"; // Your Wi-Fi password
 
-// --- Global Variables ---
-bool alertSent = false; // Tracks if an alert has been sent to prevent spam.
-unsigned long lastCheckTime = 0; // Stores the last time the power status was checked.
+// Your IFTTT Webhook details
+const char* ifttt_event_name = "power_outage"; // The event name you created
+const char* ifttt_key = "dutsEs_PE3qeYrsLIA7Y__ ";      // Your unique key from the Webhooks documentation page
 
-// --- Constants ---
-const int WIFI_RETRY_LIMIT = 20;    // How many times to retry Wi-Fi connection.
-const long CHECK_INTERVAL_MS = 5000; // Interval between power status checks (5 seconds).
+// Define the GPIO pin used to sense the main power
+const int sensePin = 13; // Using GPIO 13 (D13)
 
-/**
- * @brief Connects the ESP32 to the configured Wi-Fi network.
- *
- * @return true if the connection is successful, false otherwise.
- */
-bool connectToWiFi() {
-    Serial.print("Connecting to WiFi...");
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+// Variable to track the alert status to prevent spamming
+bool alertSent = false;
 
-    int retryCount = 0;
-    while (WiFi.status() != WL_CONNECTED && retryCount < WIFI_RETRY_LIMIT) {
-        delay(500);
-        Serial.print(".");
-        retryCount++;
-    }
-    Serial.println();
-
-    if (WiFi.status() == WL_CONNECTED) {
-        Serial.println("WiFi connected!");
-        Serial.print("IP Address: ");
-        Serial.println(WiFi.localIP());
-        return true;
-    } else {
-        Serial.println("WiFi connection failed.");
-        return false;
-    }
-}
-
-/**
- * @brief Sends a notification to IFTTT via a webhook.
- */
+// Function to send the notification to IFTTT
 void sendNotification() {
-    if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("Not connected to WiFi. Cannot send notification.");
-        return;
-    }
+  // Construct the IFTTT webhook URL
+  String url = "http://maker.ifttt.com/trigger/";
+  url += ifttt_event_name;
+  url += "/with/key/";
+  url += ifttt_key;
 
-    HTTPClient http;
-    String url = "http://maker.ifttt.com/trigger/" + String(IFTTT_EVENT_NAME) + "/with/key/" + String(IFTTT_KEY);
+  // Create an HTTP client object
+  HTTPClient http;
 
-    http.begin(url);
-    int httpResponseCode = http.GET();
+  // Start the HTTP request
+  http.begin(url);
+  
+  // Send the GET request and get the HTTP response code
+  int httpResponseCode = http.GET();
 
-    if (httpResponseCode > 0) {
-        Serial.printf("Notification sent! HTTP Response code: %d\n", httpResponseCode);
-    } else {
-        Serial.printf("Error sending notification. HTTP Error code: %s\n", http.errorToString(httpResponseCode).c_str());
-    }
+  // Check the response and print status to Serial Monitor for debugging
+  if (httpResponseCode > 0) {
+    Serial.print("Notification sent! HTTP Response code: ");
+    Serial.println(httpResponseCode);
+  } else {
+    Serial.print("Error sending notification. HTTP Error code: ");
+    Serial.println(httpResponseCode);
+  }
 
-    http.end();
+  // Free resources
+  http.end();
 }
 
 void setup() {
-    Serial.begin(115200);
-    // Wait a moment for the serial monitor to connect.
-    delay(100);
-    Serial.println("Power Outage Monitor Initializing...");
+  // Start the Serial Monitor for debugging purposes
+  Serial.begin(115200);
+  Serial.println("Power Outage Monitor Initializing...");
 
-    pinMode(SENSE_PIN, INPUT);
+  // Set the sense pin as an input
+  pinMode(sensePin, INPUT);
 
-    // Initial check message
-    Serial.println("Performing initial power check...");
+  // Allow time for system to stabilize
+  delay(1000); 
 }
 
 void loop() {
-    // Use a non-blocking delay to check the power status periodically.
-    if (millis() - lastCheckTime >= CHECK_INTERVAL_MS) {
-        lastCheckTime = millis();
+  // Read the current state of the main power
+  int powerState = digitalRead(sensePin);
 
-        int powerState = digitalRead(SENSE_PIN);
+  // Check if the main power is OFF
+  if (powerState == LOW) {
+    // Check if an alert has already been sent
+    if (!alertSent) {
+      Serial.println("POWER OUTAGE DETECTED!");
+      
+      // Connect to Wi-Fi
+      Serial.print("Connecting to WiFi...");
+      WiFi.begin(ssid, password);
+      
+      int wifi_retry_count = 0;
+      while (WiFi.status() != WL_CONNECTED && wifi_retry_count < 20) {
+        delay(500);
+        Serial.print(".");
+        wifi_retry_count++;
+      }
+      Serial.println();
 
-        if (powerState == LOW) { // Power is OUT
-            if (!alertSent) {
-                Serial.println("POWER OUTAGE DETECTED!");
-                if (connectToWiFi()) {
-                    sendNotification();
-                    alertSent = true; // Mark alert as sent to avoid spamming
-                    WiFi.disconnect(true); // Disconnect to save power
-                    Serial.println("WiFi disconnected.");
-                }
-            }
-        } else { // Power is ON
-            if (alertSent) {
-                Serial.println("Power has been restored. Resetting alert status.");
-                alertSent = false;
-            } else {
-                Serial.println("Power is ON. All systems normal.");
-            }
-        }
+      // If Wi-Fi connection is successful, send the notification
+      if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("WiFi connected!");
+        sendNotification();
+        alertSent = true; // Mark the alert as sent
+      } else {
+        Serial.println("WiFi connection failed. Could not send alert.");
+      }
     }
+  } 
+  // If the main power is ON
+  else {
+    Serial.println("Power is ON. All systems normal.");
+    // Reset the alert status so it can be triggered again if power fails later
+    if (alertSent) {
+      Serial.println("Resetting alert status.");
+      alertSent = false;
+    }
+  }
+
+  // Wait for 5 seconds before checking again
+  delay(5000);
 }
